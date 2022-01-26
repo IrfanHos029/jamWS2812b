@@ -1,7 +1,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
 #include <WiFiUdp.h>
 //#include <ArduinoJson.h>
 
@@ -14,10 +13,10 @@
 const char *ssid     = "IrfanRetmi";
 const char *password = "00002222";
 
-int hl;
-int hr;
-int ml;
-int mr;
+int h1;
+int h2;
+int m1;
+int m2;
 unsigned long tmrsave=0;
 unsigned long tmrsaveHue=0;
 unsigned long tmrWarning=0;
@@ -29,10 +28,11 @@ bool dotsOn = false;
 bool warningWIFI = false;
 static int hue;
 int pixelColor;
+int peakWIFI=0;
 
 const long utcOffsetInSeconds = 25200;
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "asia.pool.ntp.org", utcOffsetInSeconds);
+NTPClient Clock(ntpUDP, "asia.pool.ntp.org", utcOffsetInSeconds);
 
 Adafruit_NeoPixel strip(LED,PinLed,NEO_GRB + NEO_KHZ800);
 
@@ -51,37 +51,49 @@ long numberss[] = {
   0b0000000,  // [10] off
   0b1111000,  // [11] degrees symbol
   0b0011110,  // [12] C(elsius)
+  0b1011110,  // [13] E
+  0b0111101,  // [14] n(N)
+  0b1001110,  // [15] t
+  0b1111110,  // [16] e
+  0b1000101,  // [17] n
+  0b1000100,  // [18] r
+  0b1000111,  // [19] o
+  0b1100111,  // [20] d
+  0b0000001,  // [21] i
+  0b1000110,  // [22] c
 };
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  digitalWrite(D4,HIGH);
+  pinMode(D4,OUTPUT);
   strip.begin();
   strip.setBrightness(100);
-//  WiFi.begin(ssid, password);
-//  while ( WiFi.status() != WL_CONNECTED ) {
-//    delay ( 500 );
-//    Serial.print ( "." );
-//  }
-//  timeClient.begin();
-}
-int counter=0;
-void loop() {
+  WiFi.begin(ssid, password);
+  while ( WiFi.status() != WL_CONNECTED ) {
+    delay ( 500 );
+    Serial.print ( "." );
+    peakWIFI++;
+    if(peakWIFI == 100){ 
+      showError();
+    }
+  }
   
-  counter++;
-  
-    if(counter==10){counter=0;}
-  
-  Serial.println(counter);
-  Display(counter,0,strip.Color(255,0,0));
-  Display(counter,1,strip.Color(0,255,0));
-  Display(counter,2,strip.Color(0,0,255));
-  Display(counter,3,strip.Color(255,255,255));
-  
-strip.show();
-delay(500);
+  Clock.begin();
+  showConnect();
+  delay(1000);
+  digitalWrite(D4,LOW);
 }
 
-void Display(byte number, byte segment, uint32_t color) {
+void loop() {
+getClock();
+stateWIFI();
+strip.show();
+
+}
+
+void DisplayNumber(byte number, byte segment, uint32_t color) {
   // segment from left to right: 3, 2, 1, 0
   byte startindex = 0;
   switch (segment) {
@@ -111,25 +123,90 @@ void Display(byte number, byte segment, uint32_t color) {
 }
 
 void getClock(){
-  
+  Clock.update();
+  h1 = Clock.getHours() / 10;
+  h2 = Clock.getHours() % 10;
+  m1 = Clock.getMinutes() / 10;
+  m2 = Clock.getMinutes() % 10;
+  int jam = Clock.getHours();
+  int menit = Clock.getMinutes();
+//  Serial.print(jam);
+//  Serial.print(":");
+//  Serial.println(menit);
 }
 
-void showClock(){
-  
+void showClock(uint32_t color){
+  DisplayNumber(h1,3,color);
+  DisplayNumber(h2,2,color);
+  DisplayNumber(m1,1,color);
+  DisplayNumber(m2,0,color);
 }
 
 void showConnect(){
-  
+  DisplayNumber( 12, 3,strip.Color(255,0,0));
+  DisplayNumber( 17, 2,strip.Color(0,255,0));
+  DisplayNumber( 16, 1,strip.Color(0,255,0));
+  DisplayNumber( 15, 0,strip.Color(0,255,0));
 }
 
 void showDisconnect(){
-  
+  DisplayNumber( 20, 3,strip.Color(255,0,0));
+  strip.setPixelColor(63 , strip.Color(255,0,0));
+  DisplayNumber( 21, 2,strip.Color(255,0,0));
+  DisplayNumber( 5, 1,strip.Color(255,0,0));
+  DisplayNumber( 22, 0,strip.Color(255,0,0));
 }
 
-void setColorDigit(){
-  
+void showError(){
+  DisplayNumber( 13, 3,strip.Color(255,0,0));
+  DisplayNumber( 18, 2,strip.Color(0,255,0));
+  DisplayNumber( 19, 1,strip.Color(0,255,0));
+  DisplayNumber( 18, 0,strip.Color(0,255,0));
 }
 
-void setColorDots(){
+void stateWIFI(){
   
+  unsigned long tmr = millis();
+  if(WiFi.status() != WL_CONNECTED) {
+      if(tmr - tmrWarning > delayWarning){
+        tmrWarning = tmr;
+        if(warningWIFI){
+      Serial.println("DISCONNECTED");
+      digitalWrite(D4,HIGH);
+        }
+        
+        else{ digitalWrite(D4,LOW); }
+        warningWIFI = !warningWIFI;
+        }    
+        
+         for(int i = 42; i <= 45; i++){
+      strip.setPixelColor(i , strip.Color(0,0,0));
+    }
+        showDisconnect();
+     }
+     else{
+      digitalWrite(D4,LOW);
+      warningWIFI=false;   
+      showClock(strip.Color(0,255,0));
+     showDots(strip.Color(255,0,0));
+      }
+}     
+
+void showDots(uint32_t color) {
+  unsigned long tmr = millis();
+  if(tmr - tmrsave > Delay){
+    tmrsave = tmr;
+  if (dotsOn) {
+    for(int i = 42; i <= 45; i++){
+      strip.setPixelColor(i , color);
+    }
+
+  } else {
+    for(int i = 42; i <= 45; i++){
+      strip.setPixelColor(i , strip.Color(0,0,0));
+    }
+  }
+  dotsOn = !dotsOn;  
+}
+strip.show();
 }

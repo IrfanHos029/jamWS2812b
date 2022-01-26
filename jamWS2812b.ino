@@ -10,8 +10,8 @@
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
 #define LED   88
 
-const char *ssid     = "IrfanRetmi";
-const char *password = "00002222";
+const char *ssid     = "Irfan.A";
+const char *password = "irfan0204";
 
 int h1;
 int h2;
@@ -69,7 +69,7 @@ void setup() {
   digitalWrite(D4,HIGH);
   pinMode(D4,OUTPUT);
   strip.begin();
-  strip.setBrightness(100);
+  strip.setBrightness(150);
   WiFi.begin(ssid, password);
   while ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
@@ -82,12 +82,14 @@ void setup() {
   
   Clock.begin();
   showConnect();
-  delay(1000);
+  delay(2000);
   digitalWrite(D4,LOW);
 }
 
 void loop() {
 getClock();
+timerRestart();
+timerHue();
 stateWIFI();
 strip.show();
 
@@ -159,9 +161,9 @@ void showDisconnect(){
 
 void showError(){
   DisplayNumber( 13, 3,strip.Color(255,0,0));
-  DisplayNumber( 18, 2,strip.Color(0,255,0));
-  DisplayNumber( 19, 1,strip.Color(0,255,0));
-  DisplayNumber( 18, 0,strip.Color(0,255,0));
+  DisplayNumber( 18, 2,strip.Color(255,0,0));
+  DisplayNumber( 19, 1,strip.Color(255,0,0));
+  DisplayNumber( 18, 0,strip.Color(255,0,0));
 }
 
 void stateWIFI(){
@@ -187,7 +189,7 @@ void stateWIFI(){
      else{
       digitalWrite(D4,LOW);
       warningWIFI=false;   
-      showClock(strip.Color(0,255,0));
+      showClock(Wheel((hue+pixelColor) & 255));
      showDots(strip.Color(255,0,0));
       }
 }     
@@ -209,4 +211,55 @@ void showDots(uint32_t color) {
   dotsOn = !dotsOn;  
 }
 strip.show();
+}
+
+
+void timerHue(){
+  unsigned long tmr = millis();
+  if(tmr - tmrsaveHue > delayHue){
+    tmrsaveHue = tmr;
+  if(pixelColor <256){
+    pixelColor++;
+    if(pixelColor==255){
+      pixelColor=0;
+    }
+  }
+}
+
+  for(int hue=0; hue<strip.numPixels(); hue++) {
+    hue++;
+      //strip.setPixelColor(hue,Wheel((i+pixelColor) & 255));
+    }
+}
+
+// Input a value 0 to 255 to get a color value.
+// The colours are a transition r - g - b - back to r.
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return strip.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return strip.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+}
+
+void timerRestart(){
+   Clock.update();
+   int jam = Clock.getHours();
+   int menit = Clock.getMinutes();
+   int detik = Clock.getSeconds();
+
+   if(jam == 0 && menit == 0 && detik == 0){
+    ESP.restart();
+   }
+   if(jam == 12 && menit == 0 && detik == 0){
+    ESP.restart();
+   }
+   if(jam == 18 && menit == 0 && detik == 0){
+    ESP.restart();
+   }
 }

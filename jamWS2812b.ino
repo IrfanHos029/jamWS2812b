@@ -21,7 +21,7 @@ unsigned long tmrsave=0;
 unsigned long tmrsaveHue=0;
 unsigned long tmrWarning=0;
 int delayWarning(200);
-int delayHue(2);
+int delayHue(5);
 int Delay(500);
 int brightnes = 0;
 bool dotsOn = false;

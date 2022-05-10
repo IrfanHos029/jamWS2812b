@@ -62,11 +62,14 @@ long numberss[] = {
   0b1100111,  // [20] d
   0b0000001,  // [21] i
   0b1000110,  // [22] c
+  0b1000000,  // [23] -
+  0b0000010,  // [24] A
+  0b1111100,  // [25] P
 };
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(9600);
+  Serial.begin(115200);
   digitalWrite(D4,HIGH);
   pinMode(D4,OUTPUT);
   strip.begin();
@@ -74,7 +77,7 @@ void setup() {
   bool connectWIFI = wifi.autoConnect("JAM DIGITAL","00000000");
   if(!connectWIFI){
     Serial.println("NOT CONNECTED TO AP");
-    
+    showErrorAP();
   }
   if ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
@@ -82,6 +85,8 @@ void setup() {
     peakWIFI++;
     if(peakWIFI == 100){ 
       showError();
+      delay(5000);
+      ESP.restart();
     }
   }
   
@@ -171,6 +176,12 @@ void showError(){
   DisplayNumber( 18, 0,strip.Color(255,0,0));
 }
 
+void showErrorAP(){
+  DisplayNumber( 13 ,3,strip.Color(255,0,0));
+  DisplayNumber( 23, 2,strip.Color(255,0,0));
+  DisplayNumber( 24, 1,strip.Color(255,0,0));
+  DisplayNumber( 25, 0,strip.Color(255,0,0));
+}
 void stateWIFI(){
   
   unsigned long tmr = millis();

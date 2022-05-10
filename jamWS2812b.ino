@@ -2,7 +2,7 @@
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
-//#include <ArduinoJson.h>
+#include <WiFiManager.h>
 
 #define PinLed D6
 #define LEDS_PER_SEG 3
@@ -10,8 +10,9 @@
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
 #define LED   88
 
-const char *ssid     = "Irfan.A";
-const char *password = "irfan0204";
+//const char *ssid     = "Irfan.A";
+//const char *password = "irfan0204";
+WiFiManager wifi;
 
 int h1;
 int h2;
@@ -70,8 +71,12 @@ void setup() {
   pinMode(D4,OUTPUT);
   strip.begin();
   strip.setBrightness(150);
-  WiFi.begin(ssid, password);
-  while ( WiFi.status() != WL_CONNECTED ) {
+  bool connectWIFI = wifi.autoConnect("JAM DIGITAL","00000000");
+  if(!connectWIFI){
+    Serial.println("NOT CONNECTED TO AP");
+    
+  }
+  if ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
     Serial.print ( "." );
     peakWIFI++;

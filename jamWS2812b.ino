@@ -3,17 +3,23 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
+#include <DS3231.h>
+#include <SPI.h>
+#include <EEPROM.h>
 
 #define PinLed D5
-#define LEDS_PER_SEG 3
-#define LEDS_PER_DOT 2
+#define LEDS_PER_SEG 5
+#define LEDS_PER_DOT 4
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
-#define LED   88
+#define LED   148
 #define indikator D1
+#define BUZZ D6
 
+RTClib RTC;
+DS3231 Time;
 //const char *ssid     = "Irfan.A";
 //const char *password = "irfan0204";
-WiFiManager wifi;
+
 
 int h1;
 int h2;
@@ -31,6 +37,7 @@ bool warningWIFI = false;
 static int hue;
 int pixelColor;
 int peakWIFI = 0;
+bool stateWifi;
 
 const long utcOffsetInSeconds = 25200;
 WiFiUDP ntpUDP;
@@ -68,18 +75,56 @@ long numberss[] = {
   0b1111100,  // [25] P
 };
 
+DateTime now;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+//  RTC.begin();
+//  RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
   digitalWrite(indikator, LOW);
   pinMode(indikator, OUTPUT);
+  digitalWrite(BUZZ,LOW);
+  pinMode(BUZZ,OUTPUT);
+  EEPROM.begin(12);
+  Wire.begin();
   strip.begin();
+  //WiFiManager wifi;
   strip.setBrightness(200);
+  stateWifi = EEPROM.read(0);
+  Serial.println(String()+"stateWifisetup=" + stateWifi);
+ // wifi.setConfigPortalTimeout(20);
+  if(stateWifi==1){
+
+  WiFiManager wifi;
+  wifi.setConfigPortalTimeout(20);
   bool connectWIFI = wifi.autoConnect("JAM DIGITAL", "00000000");
+  //keluarkan tulisan RTC
   if (!connectWIFI) {
+    stateWifi=0;
     Serial.println("NOT CONNECTED TO AP");
     showErrorAP();
+    delay(2000);
+    EEPROM.write(0,stateWifi);
+    EEPROM.commit();
+    digitalWrite(BUZZ,HIGH);
+    delay(1000);
+    //ESP.restart();
+    digitalWrite(BUZZ,LOW);
   }
+  else
+  {
+    Serial.println("CONNECTED");
+    for(int i =0; i < 2;i++)
+    {
+      digitalWrite(BUZZ,HIGH);
+      delay(50);
+      digitalWrite(BUZZ,LOW);
+      delay(50);
+    }
+    }
+  }
+  /*
   if ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
     Serial.print ( "." );
@@ -90,13 +135,16 @@ void setup() {
       ESP.restart();
     }
   }
-
+*/
   Clock.begin();
   showConnect();
   delay(2000);
-  Serial.println("CONNECT");
+  Serial.println("RUN");
+//  EEPROM.write(0,1);
+//  EEPROM.commit();
 }
 
+/*
 void loop() {
   getClock();
   timerRestart();
@@ -105,7 +153,16 @@ void loop() {
   strip.show();
 
 }
-
+*/
+void loop()
+{
+  now=RTC.now();
+  if(stateWifi==0){Serial.println(String()+now.hour()+":"+now.minute()+":"+now.second());}
+  else{Serial.println(String()+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
+  Serial.println(String() + "stateWifi=" + stateWifi);
+  autoConnectt();
+  stateWIFI();
+}
 void DisplayNumber(byte number, byte segment, uint32_t color) {
   // segment from left to right: 3, 2, 1, 0
   byte startindex = 0;
@@ -135,19 +192,28 @@ void DisplayNumber(byte number, byte segment, uint32_t color) {
   //yield();
 }
 
-void getClock() {
-  Clock.update();
-  h1 = Clock.getHours() / 10;
-  h2 = Clock.getHours() % 10;
-  m1 = Clock.getMinutes() / 10;
-  m2 = Clock.getMinutes() % 10;
-  int jam = Clock.getHours();
-  int menit = Clock.getMinutes();
+void getClockRTC() {
+  now = RTC.now();
+//  Time.update();
+  h1 = now.hour() / 10;
+  h2 = now.hour() % 10;
+  m1 = now.minute() / 10;
+  m2 = now.minute() % 10;
+//  int jam = Time.getHour();
+//  int menit = Time.getMinute();
   //  Serial.print(jam);
   //  Serial.print(":");
   //  Serial.println(menit);
 }
 
+void getClockNTP()
+{
+  Clock.update();
+  h1 = Clock.getHours() / 10;
+  h2 = Clock.getHours() % 10;
+  m1 = Clock.getMinutes() / 10;
+  m2 = Clock.getMinutes() % 10;
+}
 void showClock(uint32_t color) {
   DisplayNumber(h1, 3, color);
   DisplayNumber(h2, 2, color);
@@ -187,11 +253,22 @@ void showErrorAP() {
 void stateWIFI() {
 
   unsigned long tmr = millis();
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() != WL_CONNECTED && stateWifi==1) {
     if (tmr - tmrWarning > delayWarning) {
       tmrWarning = tmr;
       TIMER++;
-      if(TIMER == 500){
+      if(TIMER <= 20)
+      {
+        if(TIMER % 2){buzzer(1);}//digitalWrite(BUZZ,HIGH);}
+        else{buzzer(0);}//digitalWrite(BUZZ,LOW);}
+      }
+      if(TIMER >= 50){//contoh
+        stateWifi = 0;
+        EEPROM.write(0,stateWifi);
+        EEPROM.commit();
+        buzzer(1);
+        //digitalWrite(BUZZ,HIGH);
+        delay(1000);
         ESP.restart();
       }
       //Serial.println(TIMER);
@@ -224,12 +301,12 @@ void showDots(uint32_t color) {
   if (tmr - tmrsave > Delay) {
     tmrsave = tmr;
     if (dotsOn) {
-      for (int i = 42; i <= 45; i++) {
+      for (int i = 70; i <= 77; i++) {
         strip.setPixelColor(i , color);
       }
 
     } else {
-      for (int i = 42; i <= 45; i++) {
+      for (int i = 70; i <= 77; i++) {
         strip.setPixelColor(i , strip.Color(0, 0, 0));
       }
     }
@@ -287,4 +364,45 @@ void timerRestart() {
   if (jam == 18 && menit == 0 && detik == 0) {
     ESP.restart();
   }
+}
+
+void autoConnectt()
+{
+  if(stateWifi==0)
+  {
+
+  now=RTC.now();
+  int menit = now.second();
+  if(menit == 0){
+  WiFiManager wifi;
+  wifi.setConfigPortalTimeout(5);
+  if(!wifi.startConfigPortal("JAM DIGITAL", "00000000"))
+  {
+    Serial.println("auto connect failed");
+    buzzer(1);
+    delay(2000);
+   // ESP.restart();
+  }
+  else
+  {
+    stateWifi=1;
+    EEPROM.write(0,stateWifi);
+    EEPROM.commit();
+    for(int i =0; i < 2;i++)
+    {
+      digitalWrite(BUZZ,HIGH);
+      delay(50);
+      digitalWrite(BUZZ,LOW);
+      delay(50);
+    }
+    delay(1000);
+    ESP.restart();
+  }
+  }
+  }
+}
+void buzzer(int state)
+{
+ if(state){digitalWrite(BUZZ,HIGH);}
+ else{digitalWrite(BUZZ,LOW); }
 }

@@ -6,6 +6,7 @@
 #include <DS3231.h>
 #include <SPI.h>
 #include <EEPROM.h>
+#include <Wire.h>
 
 #define PinLed D5
 #define LEDS_PER_SEG 5
@@ -74,9 +75,9 @@ long numberss[] = {
   0b0000010,  // [24] A
   0b1111100,  // [25] P
 };
-
+bool wm_nonblocking = false;
 DateTime now;
-
+ WiFiManager wifi;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -89,6 +90,7 @@ void setup() {
   EEPROM.begin(12);
   Wire.begin();
   strip.begin();
+  if(wm_nonblocking) wifi.setConfigPortalBlocking(false);
   //WiFiManager wifi;
   strip.setBrightness(200);
   stateWifi = EEPROM.read(0);
@@ -96,7 +98,7 @@ void setup() {
  // wifi.setConfigPortalTimeout(20);
   if(stateWifi==1){
 
-  WiFiManager wifi;
+ // WiFiManager wifi;
   wifi.setConfigPortalTimeout(20);
   bool connectWIFI = wifi.autoConnect("JAM DIGITAL", "00000000");
   //keluarkan tulisan RTC
@@ -138,7 +140,7 @@ void setup() {
 */
   Clock.begin();
   showConnect();
-  delay(2000);
+  //delay(2000);
   Serial.println("RUN");
 //  EEPROM.write(0,1);
 //  EEPROM.commit();
@@ -156,9 +158,10 @@ void loop() {
 */
 void loop()
 {
-  now=RTC.now();
-  if(stateWifi==0){Serial.println(String()+now.hour()+":"+now.minute()+":"+now.second());}
-  else{Serial.println(String()+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
+  //now=RTC.now();
+  if(wm_nonblocking) wifi.process();
+  if(stateWifi==0){  now=RTC.now(); Serial.println(String()+"RTC:" + now.hour()+":"+now.minute()+":"+now.second());}
+  else{Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
   Serial.println(String() + "stateWifi=" + stateWifi);
   autoConnectt();
   stateWIFI();
@@ -253,7 +256,8 @@ void showErrorAP() {
 void stateWIFI() {
 
   unsigned long tmr = millis();
-  if (WiFi.status() != WL_CONNECTED && stateWifi==1) {
+  if(stateWifi){
+  if (WiFi.status() != WL_CONNECTED) {
     if (tmr - tmrWarning > delayWarning) {
       tmrWarning = tmr;
       TIMER++;
@@ -293,6 +297,7 @@ void stateWIFI() {
     warningWIFI = false;
     showClock(Wheel((hue + pixelColor) & 255));
     showDots(strip.Color(255, 0, 0));
+  }
   }
 }
 
@@ -374,14 +379,15 @@ void autoConnectt()
   now=RTC.now();
   int menit = now.second();
   if(menit == 0){
-  WiFiManager wifi;
+  //WiFiManager wifi;
   wifi.setConfigPortalTimeout(5);
-  if(!wifi.startConfigPortal("JAM DIGITAL", "00000000"))
+  if(!wifi.autoConnect("JAM DIGITAL", "00000000"))
   {
     Serial.println("auto connect failed");
     buzzer(1);
-    delay(2000);
-   // ESP.restart();
+    delay(1000);
+    buzzer(0);
+//    ESP.restart();
   }
   else
   {
@@ -396,7 +402,7 @@ void autoConnectt()
       delay(50);
     }
     delay(1000);
-    ESP.restart();
+   // ESP.restart();
   }
   }
   }

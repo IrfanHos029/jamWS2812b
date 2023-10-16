@@ -33,7 +33,7 @@ int delayWarning(200);
 int delayHue(2);
 int Delay(500);
 int TIMER = 0;
-bool dotsOn = false;
+int dotsOn = 0;
 bool warningWIFI = false;
 static int hue;
 int pixelColor;
@@ -81,8 +81,6 @@ DateTime now;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-//  RTC.begin();
-//  RTC.adjust(DateTime(F(__DATE__), F(__TIME__)));
   digitalWrite(indikator, LOW);
   pinMode(indikator, OUTPUT);
   digitalWrite(BUZZ,LOW);
@@ -109,10 +107,13 @@ void setup() {
     delay(2000);
     EEPROM.write(0,stateWifi);
     EEPROM.commit();
-    digitalWrite(BUZZ,HIGH);
-    delay(1000);
-    //ESP.restart();
-    digitalWrite(BUZZ,LOW);
+    for(int i =0; i < 5;i++)
+    {
+      digitalWrite(BUZZ,HIGH);
+      delay(50);
+      digitalWrite(BUZZ,LOW);
+      delay(50);
+    }
   }
   else
   {
@@ -124,26 +125,20 @@ void setup() {
       digitalWrite(BUZZ,LOW);
       delay(50);
     }
-    }
-  }
-  /*
-  if ( WiFi.status() != WL_CONNECTED ) {
-    delay ( 500 );
-    Serial.print ( "." );
-    peakWIFI++;
-    if (peakWIFI == 300) {
-      showError();
-      delay(5000);
-      ESP.restart();
-    }
-  }
-*/
-  Clock.begin();
+    Clock.begin();//NTP
+  Clock.update();
+  Time.setHour(Clock.getHours());
+  delay(500);
+  Time.setMinute(Clock.getMinutes());
+  delay(500);
+  Time.setSecond(Clock.getSeconds());
   showConnect();
-  //delay(2000);
+    }
+  }
+  
+  
   Serial.println("RUN");
-//  EEPROM.write(0,1);
-//  EEPROM.commit();
+
 }
 
 /*
@@ -302,10 +297,12 @@ void stateWIFI() {
 }
 
 void showDots(uint32_t color) {
-  unsigned long tmr = millis();
-  if (tmr - tmrsave > Delay) {
-    tmrsave = tmr;
-    if (dotsOn) {
+//  unsigned long tmr = millis();
+//  if (tmr - tmrsave > Delay) {
+//    tmrsave = tmr;
+   now = RTC.now();
+   dotsOn = now.second();
+    if (dotsOn % 2) {
       for (int i = 70; i <= 77; i++) {
         strip.setPixelColor(i , color);
       }
@@ -315,8 +312,8 @@ void showDots(uint32_t color) {
         strip.setPixelColor(i , strip.Color(0, 0, 0));
       }
     }
-    dotsOn = !dotsOn;
-  }
+//    dotsOn = !dotsOn;
+//  }
   strip.show();
 }
 
@@ -369,6 +366,53 @@ void timerRestart() {
   if (jam == 18 && menit == 0 && detik == 0) {
     ESP.restart();
   }
+}
+
+
+int ledState = HIGH;         // the current state of the output pin
+int buttonState;             // the current reading from the input pin
+int lastButtonState = LOW;   // the previous reading from the input pin
+unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
+unsigned long debounceDelay1 = 1000;    // the debounce time; increase if the output flickers
+unsigned long debounceDelay2 = 5000
+void checkButton()
+{
+ int reading = digitalRead(buttonPin);
+
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay1) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // only toggle the LED if the new button state is HIGH
+      if (buttonState == HIGH) {
+        stateWifi = !stateWifi;
+        EEPROM.write(0,stateWifi);
+        EEPROM.commit();
+        delay(1000);
+        buzzer(1);
+        ESP.restart();
+      }
+    }
+  }
+
+  if ((millis() - lastDebounceTime) > debounceDelay2) {
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // only toggle the LED if the new button state is HIGH
+      if (buttonState == HIGH) {
+        
+        delay(1000);
+        ESP.restart();
+      }
+    }
+  }
+  lastButtonState = reading;
 }
 
 void autoConnectt()

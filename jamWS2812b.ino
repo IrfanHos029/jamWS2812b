@@ -14,7 +14,8 @@
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
 #define LED   148
 #define indikator D1
-#define BUZZ D6
+#define BUZZ D0
+#define button D7//
 
 RTClib RTC;
 DS3231 Time;
@@ -85,6 +86,7 @@ void setup() {
   pinMode(indikator, OUTPUT);
   digitalWrite(BUZZ,LOW);
   pinMode(BUZZ,OUTPUT);
+  pinMode(button,INPUT);
   EEPROM.begin(12);
   Wire.begin();
   strip.begin();
@@ -155,8 +157,9 @@ void loop()
 {
   //now=RTC.now();
   if(wm_nonblocking) wifi.process();
+  checkButton();
   if(stateWifi==0){  now=RTC.now(); Serial.println(String()+"RTC:" + now.hour()+":"+now.minute()+":"+now.second());}
-  else{Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
+  else{Clock.update(); Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
   Serial.println(String() + "stateWifi=" + stateWifi);
   autoConnectt();
   stateWIFI();
@@ -369,50 +372,35 @@ void timerRestart() {
 }
 
 
-int ledState = HIGH;         // the current state of the output pin
-int buttonState;             // the current reading from the input pin
-int lastButtonState = LOW;   // the previous reading from the input pin
-unsigned long lastDebounceTime = 0;  // the last time the output pin was toggled
-unsigned long debounceDelay1 = 1000;    // the debounce time; increase if the output flickers
-unsigned long debounceDelay2 = 5000
 void checkButton()
 {
- int reading = digitalRead(buttonPin);
-
-  if (reading != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay1) {
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      // only toggle the LED if the new button state is HIGH
-      if (buttonState == HIGH) {
-        stateWifi = !stateWifi;
-        EEPROM.write(0,stateWifi);
-        EEPROM.commit();
-        delay(1000);
-        buzzer(1);
+  // check for button press
+  if ( digitalRead(button) == HIGH ) {
+    // poor mans debounce/press-hold, code not ideal for production
+    buzzer(1)
+    delay(100);
+    buzzer(0);
+    // start portal w delay
+      Serial.println("Starting switch state jam");
+     stateWifi = !stateWifi;
+     Serial.println(String() + "stateWifi in the button =" + stateWifi);
+     int data = EEPROM.read(0);
+     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
+    if( digitalRead(button) == HIGH ){
+      Serial.println("Button Pressed");
+      buzzer(1);
+      // still holding button for 3000 ms, reset settings, code not ideaa for production
+      delay(3000); // reset delay hold
+      if( digitalRead(button) == HIGH ){
+        Serial.println("Button Held");
+        Serial.println("Erasing Config, restarting");
+        wifi.resetSettings();
         ESP.restart();
       }
+      
+      
     }
   }
-
-  if ((millis() - lastDebounceTime) > debounceDelay2) {
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      // only toggle the LED if the new button state is HIGH
-      if (buttonState == HIGH) {
-        
-        delay(1000);
-        ESP.restart();
-      }
-    }
-  }
-  lastButtonState = reading;
 }
 
 void autoConnectt()

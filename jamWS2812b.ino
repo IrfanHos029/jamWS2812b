@@ -13,8 +13,8 @@
 #define LEDS_PER_DOT 4
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
 #define LED   148
-#define indikator D1
-#define BUZZ D0
+#define indikator D4
+#define BUZZ D6
 #define button D7//
 
 RTClib RTC;
@@ -39,7 +39,7 @@ bool warningWIFI = false;
 static int hue;
 int pixelColor;
 int peakWIFI = 0;
-bool stateWifi;
+bool stateWifi,stateMode;
 
 const long utcOffsetInSeconds = 25200;
 WiFiUDP ntpUDP;
@@ -94,17 +94,19 @@ void setup() {
   //WiFiManager wifi;
   strip.setBrightness(200);
   stateWifi = EEPROM.read(0);
-  Serial.println(String()+"stateWifisetup=" + stateWifi);
+  stateMode = EEPROM.read(0);
+  Serial.println(String()+"stateWifisetup=" + stateWifi + "stateModesetup=" + stateMode);
  // wifi.setConfigPortalTimeout(20);
   if(stateWifi==1){
 
  // WiFiManager wifi;
-  wifi.setConfigPortalTimeout(20);
+  wifi.setConfigPortalTimeout(60);
   bool connectWIFI = wifi.autoConnect("JAM DIGITAL", "00000000");
   //keluarkan tulisan RTC
   if (!connectWIFI) {
     stateWifi=0;
     Serial.println("NOT CONNECTED TO AP");
+    Serial.println("Pindah ke mode RTC");
     showErrorAP();
     delay(2000);
     EEPROM.write(0,stateWifi);
@@ -116,6 +118,7 @@ void setup() {
       digitalWrite(BUZZ,LOW);
       delay(50);
     }
+    ESP.restart();
   }
   else
   {
@@ -160,7 +163,7 @@ void loop()
   checkButton();
   if(stateWifi==0){  now=RTC.now(); Serial.println(String()+"RTC:" + now.hour()+":"+now.minute()+":"+now.second());}
   else{Clock.update(); Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
-  Serial.println(String() + "stateWifi=" + stateWifi);
+  Serial.println(String() + "stateWifi=" + stateWifi + "stateMode=" + stateMode);
   autoConnectt();
   stateWIFI();
 }
@@ -297,6 +300,7 @@ void stateWIFI() {
     showDots(strip.Color(255, 0, 0));
   }
   }
+  if(stateMode != stateWifi){buzzer(1); Serial.println("status mode berubah"); delay(1000); ESP.restart();}
 }
 
 void showDots(uint32_t color) {
@@ -377,15 +381,18 @@ void checkButton()
   // check for button press
   if ( digitalRead(button) == HIGH ) {
     // poor mans debounce/press-hold, code not ideal for production
-    buzzer(1)
+    buzzer(1);
     delay(100);
     buzzer(0);
     // start portal w delay
       Serial.println("Starting switch state jam");
      stateWifi = !stateWifi;
      Serial.println(String() + "stateWifi in the button =" + stateWifi);
-     int data = EEPROM.read(0);
-     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
+     Serial.println(String() + "stateMode in the button =" + stateMode);
+     EEPROM.write(0,stateWifi); 
+     EEPROM.commit();
+//     int data = EEPROM.read(0);
+//     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
     if( digitalRead(button) == HIGH ){
       Serial.println("Button Pressed");
       buzzer(1);

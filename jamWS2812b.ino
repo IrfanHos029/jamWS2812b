@@ -91,6 +91,11 @@ long numberss[] = {
   DisplayNumber( 25, 0, strip.Color(0, 255, 0));
 }
  */
+
+ int JW;
+ int MW;
+ int JR;
+ int MR;
 bool wm_nonblocking = false;
 DateTime now;
  WiFiManager wifi;
@@ -154,6 +159,7 @@ void setup() {
   delay(500);
   Time.setSecond(Clock.getSeconds());
   showConnect();
+  Serial.println(String()+"NTP in the setup:"+ Clock.getHours()+":"+ Clock.getMinutes()+":"+Clock.getSeconds());
     }
   }
   else
@@ -177,6 +183,7 @@ void loop() {
    showDots(strip.Color(255, 0, 0));
    warningWIFI = 1;
    stateWIFI();
+   //Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
    }
    else
    {
@@ -185,6 +192,7 @@ void loop() {
     showDots(strip.Color(255, 0, 0));
     warningWIFI = 0;
     autoConnectt();
+    //Serial.println(String()+"RTC:" + JW+":"+ MW+":"+now.second());
     }
 
     if(stateMode != stateWifi){showError(); buzzer(1); Serial.println("status mode berubah"); delay(1000); ESP.restart();}
@@ -199,16 +207,16 @@ void loop() {
 
 void printDebug()
 {
-  if(stateWifi==0)
-  {  
-    now=RTC.now(); 
-    Serial.println(String()+"RTC:" + now.hour()+":"+now.minute()+":"+now.second());
-  }
-  else
-  {
-    Clock.update(); 
-    Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());
-  }
+//  if(stateWifi==0)
+//  {  
+//    now=RTC.now(); 
+//    Serial.println(String()+"RTC:" + JW+":"+ MW+":"+now.second());
+//  }
+//  else
+//  {
+//    Clock.update(); 
+//    Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
+//  }
   Serial.println(String() + "stateWifi=" + stateWifi + "stateMode=" + stateMode);
 }
 /*
@@ -260,6 +268,9 @@ void getClockRTC() {
   h2 = now.hour() % 10;
   m1 = now.minute() / 10;
   m2 = now.minute() % 10;
+  JR = now.hour();
+  MR = now.minute();
+  Serial.println(String()+"RTC:"+ JR+":"+ MR+":"+now.second());
 //  int jam = Time.getHour();
 //  int menit = Time.getMinute();
   //  Serial.print(jam);
@@ -274,6 +285,9 @@ void getClockNTP()
   h2 = Clock.getHours() % 10;
   m1 = Clock.getMinutes() / 10;
   m2 = Clock.getMinutes() % 10;
+  JW = Clock.getHours();
+  MW = Clock.getMinutes();
+  Serial.println(String()+"NTP:"+ JW+":"+ MW+":"+Clock.getSeconds());
 }
 void showClock(uint32_t color) {
   DisplayNumber(h1, 3, color);

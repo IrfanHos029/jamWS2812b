@@ -458,18 +458,18 @@ uint32_t Wheel(byte WheelPos) {
 }
 
 void timerRestart() {
-  Clock.update();
-  int jam = Clock.getHours();
-  int menit = Clock.getMinutes();
-  int detik = Clock.getSeconds();
+  now = RTC.now(0
+  int jam   = now.hour());
+  int menit = now.minute();
+  int detik = now.second();
 
-  if (jam == 0 && menit == 0 && detik == 0) {
-    ESP.restart();
-  }
-  if (jam == 12 && menit == 0 && detik == 0) {
+  if (jam == 6 && menit == 0 && detik == 0) {
     ESP.restart();
   }
   if (jam == 18 && menit == 0 && detik == 0) {
+    ESP.restart();
+  }
+  if (jam == 20 && menit == 0 && detik == 0) {
     ESP.restart();
   }
 }
@@ -515,10 +515,14 @@ void autoConnectt()
 {
   if(stateWifi==0)
   {
-
+  int dataJam[]={12,24};
   now=RTC.now();
-  int menit = now.second(); //perlu dirubah menjadi jam,menit,dan detik
-  if(menit == 0){
+  int jam   = now.hour(); //perlu dirubah menjadi jam,menit,dan detik
+  int menit = now.minute();
+  int detik = now.second();
+  if(jam == dataJam[0] || jam == dataJam[1]){
+  if(menit == 0 && detik == 0){
+  //if(detik == 0){
   //WiFiManager wifi;
   wifi.setConfigPortalTimeout(5);
   if(!wifi.autoConnect("JAM DIGITAL", "00000000"))
@@ -550,6 +554,7 @@ void autoConnectt()
    // ESP.restart();
   }
   }
+  }//
   }
 }
 void buzzer(int state)

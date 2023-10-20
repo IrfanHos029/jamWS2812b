@@ -180,43 +180,39 @@ void loop() {
   if(wm_nonblocking) wifi.process();
   if(stateWifi)
   {
-   Clock.update();
-   
-  h1 = Clock.getHours() / 10;
-  h2 = Clock.getHours() % 10;
-  m1 = Clock.getMinutes() / 10;
-  m2 = Clock.getMinutes() % 10;
-  int JW = Clock.getHours();
-  int MW = Clock.getMinutes();
-   showClock(Wheel((hue + pixelColor) & 255));
-   showDots(strip.Color(255, 0, 0));
+   getClockNTP();
    warningWIFI = 1;
-   //stateWIFI();
-   Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
+   //Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
    }
    else
    {
-    now = RTC.now();
-    h1 = now.hour() / 10;
-  h2 = now.hour() % 10;
-  m1 = now.minute() / 10;
-  m2 = now.minute() % 10;
-  int JR = now.hour();
-  int MR = now.minute();
+    getClockRTC();
+    warningWIFI = 0;
+   }
+   
     showClock(Wheel((hue + pixelColor) & 255));
     showDots(strip.Color(255, 0, 0));
-    warningWIFI = 0;
-   // autoConnectt();
    // Serial.println(String()+"RTC:" + JW+":"+ MW+":"+now.second());
-    }
-Serial.println(String()+"NTP:"+ h1+":"+ h2+":"+Clock.getSeconds());
-Serial.println(String()+"RTC:" + m1+":"+ m2+":"+now.second());
-    if(stateMode != stateWifi){showError(); buzzer(1); Serial.println("status mode berubah"); delay(1000); ESP.restart();}
+ 
+  Serial.println(String()+"NTP:"+ h1+":"+ h2+":"+Clock.getSeconds());
+  Serial.println(String()+"RTC:" + m1+":"+ m2+":"+now.second());
+  
+  if(stateMode != stateWifi)
+  {
+    for (int i = 70; i <= 77; i++) {
+        strip.setPixelColor(i , strip.Color(0, 0, 0));
+      }
+    showError(); 
+    buzzer(1); 
+    Serial.println("status mode berubah"); 
+    delay(1000);
+    ESP.restart();
+   }
 
   checkButton();
   stateWIFI();
   autoConnectt();
-  //timerRestart();
+  timerRestart();
   printDebug();
   timerHue();
   strip.show();
@@ -378,6 +374,7 @@ void stateWIFI() {
   if (WiFi.status() != WL_CONNECTED) {
     if (tmr - tmrWarning > delayWarning) {
       tmrWarning = tmr;
+      //warningWIFI = !warningWIFI;
       TIMER++;
       if(TIMER <= 20)
       {
@@ -394,16 +391,18 @@ void stateWIFI() {
         delay(1500);
         ESP.restart();
       }
-      //Serial.println(TIMER);
-      if (warningWIFI) {
-        Serial.println("DISCONNECTED");
-        digitalWrite(indikator, LOW);
-      }
-
-      else {
-        digitalWrite(indikator, HIGH);
-      }
-      warningWIFI = !warningWIFI;
+      Serial.println(String() + "Timer:" + TIMER);
+//      if (warningWIFI) {
+//        Serial.println("DISCONNECTED ON");
+//        //digitalWrite(indikator, LOW);
+//      }
+//
+//      else {
+//        Serial.println("DISCONNECTED Off");
+//        //digitalWrite(indikator, HIGH);
+//      }
+//      digitalWrite(indikator, warningWIFI);
+      //warningWIFI = !warningWIFI;
     }
 
 //    for (int i = 42; i <= 45; i++) {
@@ -411,6 +410,10 @@ void stateWIFI() {
 //    }
 //    //showDisconnect();
   }
+//  else
+//  {
+//    digitalWrite(indikator,warningWIFI);
+//  }
 //  else {
 //    digitalWrite(indikator, HIGH);
 //    warningWIFI = false;
@@ -487,7 +490,7 @@ void timerRestart() {
   if (jam == 18 && menit == 0 && detik == 0) {
     ESP.restart();
   }
-  if (jam == 20 && menit == 0 && detik == 0) {
+  if (jam == 21 && menit == 0 && detik == 0) {
     ESP.restart();
   }
 }
@@ -499,8 +502,8 @@ void checkButton()
   if ( digitalRead(button) == HIGH ) {
     // poor mans debounce/press-hold, code not ideal for production
    // buzzer(1);
-    delay(100);
-   // buzzer(0);
+    delay(50);
+    buzzer(1);
     // start portal w delay
       Serial.println("Starting switch state jam");
      stateWifi = !stateWifi;
@@ -511,12 +514,17 @@ void checkButton()
 //     int data = EEPROM.read(0);
 //     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
     if( digitalRead(button) == HIGH ){
+      
       Serial.println("Button Pressed");
 //      showRST();
-//      delay(1000);
-      buzzer(1);
+      delay(1000);
+      buzzer(0);
       // still holding button for 3000 ms, reset settings, code not ideaa for production
       delay(3000); // reset delay hold
+      for (int i = 70; i <= 77; i++) {
+        strip.setPixelColor(i , strip.Color(0, 0, 0));
+      }
+      buzzer(1);
       showRST();
       delay(1000);
       if( digitalRead(button) == HIGH ){
@@ -535,14 +543,16 @@ void autoConnectt()
 {
   if(stateWifi==0)
   {
-  int dataJam[]={12,24};
+  int dataJam[]={0,14};
   now=RTC.now();
   int jam   = now.hour(); //perlu dirubah menjadi jam,menit,dan detik
   int menit = now.minute();
   int detik = now.second();
-//  if(jam == dataJam[0] || jam == dataJam[1]){
-//  if(menit == 0 && detik == 0){
-  if(detik == 0){
+  if(jam == dataJam[0] || jam == dataJam[1]){
+    Serial.println("masuk jam autoConnect");
+  if(menit == 0 && detik == 0){
+    Serial.println("system autoConnect running");
+ // if(detik == 0){
   //WiFiManager wifi;
   wifi.setConfigPortalTimeout(5);
   if(!wifi.autoConnect("JAM DIGITAL", "00000000"))
@@ -574,7 +584,7 @@ void autoConnectt()
    // ESP.restart();
   }
   }
-  //}//
+  }//
   }
 }
 void buzzer(int state)

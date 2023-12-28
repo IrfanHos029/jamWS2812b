@@ -8,14 +8,14 @@
 #include <EEPROM.h>
 #include <Wire.h>
 
-#define PinLed D5
-#define LEDS_PER_SEG 5
-#define LEDS_PER_DOT 4
+#define PinLed D6
+#define LEDS_PER_SEG 3
+#define LEDS_PER_DOT 2
 #define LEDS_PER_DIGIT  LEDS_PER_SEG *7
-#define LED   148
-#define indikator D0 //D4=lampu internal,D0=lampu eksternal
-#define BUZZ D6
-#define button D7//
+#define LED   88
+#define indikator D4 //D4=lampu internal,D0=lampu eksternal
+#define BUZZ D5
+#define button D3//
 
 RTClib RTC;
 DS3231 Time;
@@ -199,7 +199,7 @@ void loop() {
   
   if(stateMode != stateWifi)
   {
-    for (int i = 70; i <= 77; i++) {
+    for (int i = 42; i <= 45; i++) {
         strip.setPixelColor(i , strip.Color(0, 0, 0));
       }
     showError(); 
@@ -430,12 +430,12 @@ void showDots(uint32_t color) {
    now = RTC.now();
    dotsOn = now.second();
     if (dotsOn % 2) {
-      for (int i = 70; i <= 77; i++) {
+      for (int i = 42; i <= 45; i++) {
         strip.setPixelColor(i , color);
       }
 
     } else {
-      for (int i = 70; i <= 77; i++) {
+      for (int i = 42; i <= 45; i++) {
         strip.setPixelColor(i , strip.Color(0, 0, 0));
       }
     }
@@ -499,7 +499,7 @@ void timerRestart() {
 void checkButton()
 {
   // check for button press
-  if ( digitalRead(button) == HIGH ) {
+  if ( digitalRead(button) == LOW ) {
     // poor mans debounce/press-hold, code not ideal for production
    // buzzer(1);
     delay(50);
@@ -513,7 +513,7 @@ void checkButton()
      EEPROM.commit();
 //     int data = EEPROM.read(0);
 //     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
-    if( digitalRead(button) == HIGH ){
+    if( digitalRead(button) == LOW ){
       
       Serial.println("Button Pressed");
 //      showRST();
@@ -527,7 +527,7 @@ void checkButton()
       buzzer(1);
       showRST();
       delay(1000);
-      if( digitalRead(button) == HIGH ){
+      if( digitalRead(button) == LOW ){
         Serial.println("Button Held");
         Serial.println("Erasing Config, restarting");
         wifi.resetSettings();

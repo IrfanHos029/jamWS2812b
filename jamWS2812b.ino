@@ -7,6 +7,8 @@
 #include <SPI.h>
 #include <EEPROM.h>
 #include <Wire.h>
+#include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
 
 #define PinLed D6
 #define LEDS_PER_SEG 3
@@ -16,6 +18,18 @@
 #define indikator D4 //D4=lampu internal,D0=lampu eksternal
 #define BUZZ D5
 #define button D3//
+#define led_state D2//4;//D2
+#define N_DIMMERS 1
+#define dimmer_led  D0//16; //D0
+
+#ifndef STASSID
+#define STASSID "Wifi"
+#define STAPSK  "00000000"
+#endif
+
+const char* ssid = STASSID;
+const char* password = STAPSK;
+const char* host = "OTA-LEDS";
 
 RTClib RTC;
 DS3231 Time;
@@ -99,6 +113,9 @@ long numberss[] = {
 bool wm_nonblocking = false;
 DateTime now;
  WiFiManager wifi;
+ int dot1[]={42,43};
+ int dot2[]={44,45};
+ int flag=0;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -107,12 +124,15 @@ void setup() {
   digitalWrite(BUZZ,LOW);
   pinMode(BUZZ,OUTPUT);
   pinMode(button,INPUT);
+   pinMode(led_state, OUTPUT);
+  pinMode(dimmer_led, OUTPUT);
   EEPROM.begin(12);
   Wire.begin();
   strip.begin();
+  
   if(wm_nonblocking) wifi.setConfigPortalBlocking(false);
   //WiFiManager wifi;
-  strip.setBrightness(200);
+  strip.setBrightness(100);
   stateWifi = EEPROM.read(0);
   stateMode = EEPROM.read(0);
   Serial.println(String()+"stateWifisetup=" + stateWifi + "stateModesetup=" + stateMode);
@@ -160,7 +180,61 @@ void setup() {
   Time.setSecond(Clock.getSeconds());
   showConnect();
   delay(1000);
+   strip.clear();
   Serial.println(String()+"NTP in the setup:"+ Clock.getHours()+":"+ Clock.getMinutes()+":"+Clock.getSeconds());
+  //digitalWrite(led_state, HIGH);
+  for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
+ 
+  Serial.println("Booting");
+ // WiFi.mode(WIFI_STA);
+flag=0;
+ // WiFi.begin(ssid, password);
+
+//  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+//    WiFi.begin(ssid, password);
+//    Serial.println("Retrying connection...");
+//  }
+  /* switch off led */
+  //digitalWrite(led_state, LOW);
+  for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(0,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
+  
+  /* configure dimmers, and OTA server events */
+  analogWriteRange(1000);
+  //analogWrite(led_pin, 2);
+
+  
+  //analogWrite(dimmer_led, 50);
+  for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(0,0,0)); strip.setPixelColor(dot2[i],strip.Color(50,0,0)); strip.show();}
+  
+
+  ArduinoOTA.setHostname(host);
+  ArduinoOTA.onStart([]() {
+//    analogWrite(dimmer_led, 0);
+//    analogWrite(led_state, 990);
+for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
+
+  });
+
+  ArduinoOTA.onEnd([]() { // do a fancy thing with our board led at end
+    for (int i = 0; i < 30; i++) {
+     // analogWrite(led_state, (i * 100) % 1001);
+      for(int a=0;a<2;a++){ strip.setPixelColor(dot2[a],strip.Color(0,0,0)); strip.setPixelColor(dot1[a],strip.Color((i * 100) % 1001,0,0)); strip.show();}
+      delay(50);
+    }
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    (void)error;
+    ESP.restart();
+  });
+
+  /* setup the OTA server */
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+  
+  delay(1000);
+  //Serial.println(String()+"NTP in the setup:"+ Clock.getHours()+":"+ Clock.getMinutes()+":"+Clock.getSeconds());
+    flag=1;
     }
   }
   else
@@ -171,52 +245,73 @@ void setup() {
   
   
   Serial.println("RUN");
-
+ 
 }
 
 
 void loop() {
-    
-  if(wm_nonblocking) wifi.process();
+   checkButton();
+  stateWIFI();
+  autoConnectt();
+  timerRestart();
+  //printDebug();
+  timerHue();
+  
+  
   if(stateWifi)
   {
-   getClockNTP();
-   warningWIFI = 1;
+     ArduinoOTA.handle();
+     if(wm_nonblocking) wifi.process();
+  // getClockNTP();
+   warningWIFI = 0;
+    if(flag==1){
+      Clock.update();
+  Time.setHour(Clock.getHours());
+  delay(500);
+  Time.setMinute(Clock.getMinutes());
+  delay(500);
+  Time.setSecond(Clock.getSeconds());
+  Serial.println(String()+"flag aktive");
+  Serial.println(String()+"NTP in the setup:"+ Clock.getHours()+":"+ Clock.getMinutes()+":"+Clock.getSeconds());
+  flag=0;
+    }
+    showCode();
+//   showClock(Wheel((hue + pixelColor) & 255));
+//    showDots(strip.Color(255, 0, 0));
    //Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
+  // strip.show();
    }
    else
    {
     getClockRTC();
-    warningWIFI = 0;
-   }
-   
+    warningWIFI = 1;
     showClock(Wheel((hue + pixelColor) & 255));
     showDots(strip.Color(255, 0, 0));
+     strip.show();
+   }
+   
+    
    // Serial.println(String()+"RTC:" + JW+":"+ MW+":"+now.second());
  
-  Serial.println(String()+"NTP:"+ h1+":"+ h2+":"+Clock.getSeconds());
-  Serial.println(String()+"RTC:" + m1+":"+ m2+":"+now.second());
+//  Serial.println(String()+"NTP:"+ h1+":"+ h2+":"+Clock.getSeconds());
+//  Serial.println(String()+"RTC:" + m1+":"+ m2+":"+now.second());
   
-  if(stateMode != stateWifi)
-  {
-    for (int i = 42; i <= 45; i++) {
-        strip.setPixelColor(i , strip.Color(0, 0, 0));
-      }
-    showError(); 
-    buzzer(1); 
-    Serial.println("status mode berubah"); 
-    delay(1000);
-    ESP.restart();
-   }
+//  if(stateMode != stateWifi)
+//  {
+//    for (int i = 42; i <= 45; i++) {
+//        strip.setPixelColor(i , strip.Color(0, 0, 0));
+//      }
+//    showError(); 
+//    buzzer(1); 
+//    Serial.println("status mode berubah"); 
+//    delay(1000);
+//    ESP.restart();
+//   }
 
-  checkButton();
-  stateWIFI();
-  autoConnectt();
-  timerRestart();
-  printDebug();
-  timerHue();
-  strip.show();
+  
+ 
   digitalWrite(indikator, warningWIFI);
+  
 }
 
 void printDebug()
@@ -367,6 +462,11 @@ void showRTC() {
   DisplayNumber( 15, 0, strip.Color(0, 255, 0));
   }
 
+  void showCode() {
+  DisplayNumber( 0, 1, strip.Color(0, 255, 0));
+  DisplayNumber( 1, 0, strip.Color(0, 255, 0));
+  }
+
 void stateWIFI() {
 
   unsigned long tmr = millis();
@@ -496,47 +596,74 @@ void timerRestart() {
 }
 
 
+//void checkButton()
+//{
+//  // check for button press
+//  if ( digitalRead(button) == LOW ) {
+//    // poor mans debounce/press-hold, code not ideal for production
+//   // buzzer(1);
+//    delay(50);
+//    buzzer(1);
+//    // start portal w delay
+//      Serial.println("Starting switch state jam");
+//     stateWifi = !stateWifi;
+//     Serial.println(String() + "stateWifi in the button =" + stateWifi);
+//     Serial.println(String() + "stateMode in the button =" + stateMode);
+//     EEPROM.write(0,stateWifi); 
+//     EEPROM.commit();
+////     int data = EEPROM.read(0);
+////     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
+//    if( digitalRead(button) == LOW ){
+//      
+//      Serial.println("Button Pressed");
+////      showRST();
+//      delay(1000);
+//      buzzer(0);
+//      // still holding button for 3000 ms, reset settings, code not ideaa for production
+//      delay(3000); // reset delay hold
+//      for (int i = 70; i <= 77; i++) {
+//        strip.setPixelColor(i , strip.Color(0, 0, 0));
+//      }
+//      buzzer(1);
+//      showRST();
+//      delay(1000);
+//      if( digitalRead(button) == LOW ){
+//        Serial.println("Button Held");
+//        Serial.println("Erasing Config, restarting");
+//        wifi.resetSettings();
+//        ESP.restart();
+//      }
+//      
+//      
+//    }
+//  }
+//}
 void checkButton()
 {
-  // check for button press
-  if ( digitalRead(button) == LOW ) {
-    // poor mans debounce/press-hold, code not ideal for production
-   // buzzer(1);
-    delay(50);
-    buzzer(1);
-    // start portal w delay
-      Serial.println("Starting switch state jam");
-     stateWifi = !stateWifi;
-     Serial.println(String() + "stateWifi in the button =" + stateWifi);
-     Serial.println(String() + "stateMode in the button =" + stateMode);
-     EEPROM.write(0,stateWifi); 
-     EEPROM.commit();
-//     int data = EEPROM.read(0);
-//     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
-    if( digitalRead(button) == LOW ){
-      
-      Serial.println("Button Pressed");
-//      showRST();
-      delay(1000);
-      buzzer(0);
-      // still holding button for 3000 ms, reset settings, code not ideaa for production
-      delay(3000); // reset delay hold
-      for (int i = 70; i <= 77; i++) {
-        strip.setPixelColor(i , strip.Color(0, 0, 0));
-      }
-      buzzer(1);
-      showRST();
-      delay(1000);
-      if( digitalRead(button) == LOW ){
-        Serial.println("Button Held");
-        Serial.println("Erasing Config, restarting");
-        wifi.resetSettings();
-        ESP.restart();
-      }
-      
-      
-    }
+  if(digitalRead(button) == LOW)
+  {
+    stateWifi = !stateWifi;
+    EEPROM.write(0,stateWifi);
+    EEPROM.commit();
+    Serial.println(String() + "button ditekan,stateWifi:" + stateWifi + " stateMode:" + stateMode);
   }
+     
+   if(stateMode != stateWifi)
+  {  
+    Serial.println(String() + "mode berubah");
+    for (int i = 0; i < 150; i++) 
+    {
+//      analogWrite(led_state, (i * 100) % 1001);
+//      analogWrite(dimmer_led, (i * 100) % 1001);
+      for(int a=0;a<2;a++){ strip.setPixelColor(dot2[a],strip.Color((i * 100) % 1001,0,0)); strip.setPixelColor(dot1[a],strip.Color((i * 100) % 1001,0,0)); strip.show();}
+      delay(50);
+    }
+    delay(1000);
+     strip.clear();
+    ESP.restart();
+  }
+ 
+   
 }
 
 void autoConnectt()

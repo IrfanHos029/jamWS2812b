@@ -141,7 +141,7 @@ void setup() {
   showAP();
  // WiFiManager wifi;
   wifi.setConfigPortalTimeout(60);
-  bool connectWIFI = wifi.autoConnect("JAM DIGITAL", "00000000");
+  bool connectWIFI = wifi.autoConnect("JAM DIGITAL 2L", "00000000");
   //keluarkan tulisan RTC
   if (!connectWIFI) {
     stateWifi=0;
@@ -252,7 +252,7 @@ for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.s
 void loop() {
    checkButton();
   stateWIFI();
-  autoConnectt();
+  //autoConnectt();
   timerRestart();
   //printDebug();
   timerHue();

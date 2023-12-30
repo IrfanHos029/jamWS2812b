@@ -110,12 +110,13 @@ long numberss[] = {
  int MW;
  int JR;
  int MR;
-bool wm_nonblocking = false;
-DateTime now;
+ bool wm_nonblocking = false;
+ DateTime now;
  WiFiManager wifi;
  int dot1[]={42,43};
  int dot2[]={44,45};
  int flag=0;
+ 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -136,14 +137,15 @@ void setup() {
   stateWifi = EEPROM.read(0);
   stateMode = EEPROM.read(0);
   Serial.println(String()+"stateWifisetup=" + stateWifi + "stateModesetup=" + stateMode);
- // wifi.setConfigPortalTimeout(20);
-  if(stateWifi==1){
+ 
+  if(stateWifi==1)
+  {
   showAP();
- // WiFiManager wifi;
   wifi.setConfigPortalTimeout(60);
   bool connectWIFI = wifi.autoConnect("JAM DIGITAL 2L", "00000000");
   //keluarkan tulisan RTC
-  if (!connectWIFI) {
+  if (!connectWIFI) 
+   {
     stateWifi=0;
     Serial.println("NOT CONNECTED TO AP");
     Serial.println("Pindah ke mode RTC");
@@ -186,14 +188,8 @@ void setup() {
   for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
  
   Serial.println("Booting");
- // WiFi.mode(WIFI_STA);
-flag=0;
- // WiFi.begin(ssid, password);
+  //flag=0;
 
-//  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-//    WiFi.begin(ssid, password);
-//    Serial.println("Retrying connection...");
-//  }
   /* switch off led */
   //digitalWrite(led_state, LOW);
   for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(0,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
@@ -209,6 +205,9 @@ flag=0;
 
   ArduinoOTA.setHostname(host);
   ArduinoOTA.onStart([]() {
+    buzzer(1);
+    delay(50);
+    buzzer(0);
 //    analogWrite(dimmer_led, 0);
 //    analogWrite(led_state, 990);
 for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.setPixelColor(dot2[i],strip.Color(0,0,0)); strip.show();}
@@ -219,7 +218,10 @@ for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.s
     for (int i = 0; i < 30; i++) {
      // analogWrite(led_state, (i * 100) % 1001);
       for(int a=0;a<2;a++){ strip.setPixelColor(dot2[a],strip.Color(0,0,0)); strip.setPixelColor(dot1[a],strip.Color((i * 100) % 1001,0,0)); strip.show();}
+      if(i % 2){buzzer(1);}
+      else{buzzer(0);}
       delay(50);
+      
     }
   });
 
@@ -240,9 +242,8 @@ for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.s
   else
   {
     showRTC();
-    delay(1500);
+    delay(1000);
   }
-  
   
   Serial.println("RUN");
  
@@ -250,7 +251,7 @@ for(int i=0;i<2;i++){ strip.setPixelColor(dot1[i],strip.Color(255,0,0)); strip.s
 
 
 void loop() {
-   checkButton();
+  checkButton();
   stateWIFI();
   //autoConnectt();
   timerRestart();
@@ -258,13 +259,16 @@ void loop() {
   timerHue();
   
   
-  if(stateWifi)
+ if(stateWifi)
   {
-     ArduinoOTA.handle();
-     if(wm_nonblocking) wifi.process();
-  // getClockNTP();
+   ArduinoOTA.handle();
+   if(wm_nonblocking) wifi.process();
+   getClockNTP();
    warningWIFI = 0;
     if(flag==1){
+      showCode();
+      strip.show();
+      buzzer(1);
       Clock.update();
   Time.setHour(Clock.getHours());
   delay(500);
@@ -274,12 +278,13 @@ void loop() {
   Serial.println(String()+"flag aktive");
   Serial.println(String()+"NTP in the setup:"+ Clock.getHours()+":"+ Clock.getMinutes()+":"+Clock.getSeconds());
   flag=0;
+  buzzer(0);
     }
-    showCode();
-//   showClock(Wheel((hue + pixelColor) & 255));
-//    showDots(strip.Color(255, 0, 0));
-   //Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
-  // strip.show();
+    //showCode();
+   showClock(Wheel((hue + pixelColor) & 255));
+   showDots(strip.Color(255, 0, 0));
+   Serial.println(String()+"NTP:"+ JR+":"+ MR+":"+Clock.getSeconds());
+   strip.show();
    }
    else
    {
@@ -287,30 +292,9 @@ void loop() {
     warningWIFI = 1;
     showClock(Wheel((hue + pixelColor) & 255));
     showDots(strip.Color(255, 0, 0));
-     strip.show();
+    strip.show();
    }
-   
-    
-   // Serial.println(String()+"RTC:" + JW+":"+ MW+":"+now.second());
- 
-//  Serial.println(String()+"NTP:"+ h1+":"+ h2+":"+Clock.getSeconds());
-//  Serial.println(String()+"RTC:" + m1+":"+ m2+":"+now.second());
-  
-//  if(stateMode != stateWifi)
-//  {
-//    for (int i = 42; i <= 45; i++) {
-//        strip.setPixelColor(i , strip.Color(0, 0, 0));
-//      }
-//    showError(); 
-//    buzzer(1); 
-//    Serial.println("status mode berubah"); 
-//    delay(1000);
-//    ESP.restart();
-//   }
-
-  
- 
-  digitalWrite(indikator, warningWIFI);
+     digitalWrite(indikator, warningWIFI);
   
 }
 
@@ -328,19 +312,9 @@ void printDebug()
 //  }
   Serial.println(String() + "stateWifi=" + stateWifi + "stateMode=" + stateMode);
 }
-/*
-void loop()
-{
-  //now=RTC.now();
-  if(wm_nonblocking) wifi.process();
-  checkButton();
-  if(stateWifi==0){  now=RTC.now(); Serial.println(String()+"RTC:" + now.hour()+":"+now.minute()+":"+now.second());}
-  else{Clock.update(); Serial.println(String()+"NTP:"+Clock.getHours()+":"+Clock.getMinutes()+":"+Clock.getSeconds());}
-  Serial.println(String() + "stateWifi=" + stateWifi + "stateMode=" + stateMode);
-  autoConnectt();
-  stateWIFI();
-}
-*/
+
+
+
 void DisplayNumber(byte number, byte segment, uint32_t color) {
   // segment from left to right: 3, 2, 1, 0
   byte startindex = 0;
@@ -370,7 +344,8 @@ void DisplayNumber(byte number, byte segment, uint32_t color) {
   //yield();
 }
 
-void getClockRTC() {
+void getClockRTC() 
+{
   now = RTC.now();
 //  Time.update();
   h1 = now.hour() / 10;
@@ -380,11 +355,6 @@ void getClockRTC() {
   JR = now.hour();
   MR = now.minute();
  // Serial.println(String()+"RTC:"+ JR+":"+ MR+":"+now.second());
-//  int jam = Time.getHour();
-//  int menit = Time.getMinute();
-  //  Serial.print(jam);
-  //  Serial.print(":");
-  //  Serial.println(menit);
 }
 
 void getClockNTP()
@@ -545,7 +515,8 @@ void showDots(uint32_t color) {
 }
 
 
-void timerHue() {
+void timerHue() 
+{
   unsigned long tmr = millis();
   if (tmr - tmrsaveHue > delayHue) {
     tmrsaveHue = tmr;
@@ -557,9 +528,10 @@ void timerHue() {
     }
   }
 
-  for (int hue = 0; hue < strip.numPixels(); hue++) {
+  for (int hue = 0; hue < strip.numPixels(); hue++) 
+  {
     hue++;
-    //strip.setPixelColor(hue,Wheel((i+pixelColor) & 255));
+   
   }
 }
 
@@ -656,9 +628,13 @@ void checkButton()
 //      analogWrite(led_state, (i * 100) % 1001);
 //      analogWrite(dimmer_led, (i * 100) % 1001);
       for(int a=0;a<2;a++){ strip.setPixelColor(dot2[a],strip.Color((i * 100) % 1001,0,0)); strip.setPixelColor(dot1[a],strip.Color((i * 100) % 1001,0,0)); strip.show();}
+      if(i % 2){buzzer(1);}
+      else{buzzer(0);}
       delay(50);
     }
+    //buzzer(1);
     delay(1000);
+    
      strip.clear();
     ESP.restart();
   }

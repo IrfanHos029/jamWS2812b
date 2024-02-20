@@ -121,7 +121,7 @@ long numberss[] = {
    
    if(wm_nonblocking) wifi.setConfigPortalBlocking(false);
    //WiFiManager wifi;
-   strip.setBrightness(20);
+   strip.setBrightness(80);
    stateWifi = EEPROM.read(0);
    stateMode = EEPROM.read(0);
    Serial.println(String()+"stateWifisetup=" + stateWifi + "stateModesetup=" + stateMode);
@@ -246,7 +246,7 @@ void loop() {
   checkButton();
   stateWIFI();
   //autoConnectt();
-  timerRestart();
+  //timerRestart();
   //printDebug();
   timerHue();
   
@@ -454,41 +454,13 @@ void stateWIFI() {
         ESP.restart();
       }
       Serial.println(String() + "Timer:" + TIMER);
-//      if (warningWIFI) {
-//        Serial.println("DISCONNECTED ON");
-//        //digitalWrite(indikator, LOW);
-//      }
-//
-//      else {
-//        Serial.println("DISCONNECTED Off");
-//        //digitalWrite(indikator, HIGH);
-//      }
-//      digitalWrite(indikator, warningWIFI);
-      //warningWIFI = !warningWIFI;
     }
-
-//    for (int i = 42; i <= 45; i++) {
-//      strip.setPixelColor(i , strip.Color(0, 0, 0));
-//    }
-//    //showDisconnect();
-  }
-//  else
-//  {
-//    digitalWrite(indikator,warningWIFI);
-//  }
-//  else {
-//    digitalWrite(indikator, HIGH);
-//    warningWIFI = false;
-//    showClock(Wheel((hue + pixelColor) & 255));
-//    showDots(strip.Color(255, 0, 0));
-//  }
-  }
+     }
+    }
   }
 
 void showDots(uint32_t color) {
-//  unsigned long tmr = millis();
-//  if (tmr - tmrsave > Delay) {
-//    tmrsave = tmr;
+
    now = RTC.now();
    dotsOn = now.second();
     if (dotsOn % 2) {
@@ -501,8 +473,6 @@ void showDots(uint32_t color) {
         strip.setPixelColor(i , strip.Color(0, 0, 0));
       }
     }
-//    dotsOn = !dotsOn;
-//  }
   strip.show();
 }
 
@@ -560,48 +530,6 @@ void timerRestart() {
 }
 
 
-//void checkButton()
-//{
-//  // check for button press
-//  if ( digitalRead(button) == LOW ) {
-//    // poor mans debounce/press-hold, code not ideal for production
-//   // buzzer(1);
-//    delay(50);
-//    buzzer(1);
-//    // start portal w delay
-//      Serial.println("Starting switch state jam");
-//     stateWifi = !stateWifi;
-//     Serial.println(String() + "stateWifi in the button =" + stateWifi);
-//     Serial.println(String() + "stateMode in the button =" + stateMode);
-//     EEPROM.write(0,stateWifi); 
-//     EEPROM.commit();
-////     int data = EEPROM.read(0);
-////     if(data != stateWifi){EEPROM.write(0,stateWifi); EEPROM.commit(); buzzer(1); delay(1000); ESP.restart();}
-//    if( digitalRead(button) == LOW ){
-//      
-//      Serial.println("Button Pressed");
-////      showRST();
-//      delay(1000);
-//      buzzer(0);
-//      // still holding button for 3000 ms, reset settings, code not ideaa for production
-//      delay(3000); // reset delay hold
-//      for (int i = 70; i <= 77; i++) {
-//        strip.setPixelColor(i , strip.Color(0, 0, 0));
-//      }
-//      buzzer(1);
-//      showRST();
-//      delay(1000);
-//      if( digitalRead(button) == LOW ){
-//        Serial.println("Button Held");
-//        Serial.println("Erasing Config, restarting");
-//        wifi.resetSettings();
-//        ESP.restart();
-//      }
-//      
-//      
-//    }
-//  }
-//}
 void checkButton()
 {
   if(digitalRead(button) == HIGH)

@@ -120,8 +120,7 @@ long numberss[] = {
    strip.begin();
    
    if(wm_nonblocking) wifi.setConfigPortalBlocking(false);
-   //WiFiManager wifi;
-   strip.setBrightness(80);
+   strip.setBrightness(50);
    stateWifi = EEPROM.read(0);
    stateMode = EEPROM.read(0);
    Serial.println(String()+"stateWifisetup=" + stateWifi + "stateModesetup=" + stateMode);
@@ -245,6 +244,7 @@ long numberss[] = {
 void loop() {
   checkButton();
   stateWIFI();
+  autoBright();
   //autoConnectt();
   //timerRestart();
   //printDebug();
@@ -438,12 +438,12 @@ void stateWIFI() {
       tmrWarning = tmr;
       //warningWIFI = !warningWIFI;
       TIMER++;
-      if(TIMER <= 20)
+      if(TIMER <= 10)
       {
         if(TIMER % 2){buzzer(1);}//digitalWrite(BUZZ,HIGH);}
         else{buzzer(0);}//digitalWrite(BUZZ,LOW);}
       }
-      if(TIMER >= 50){//rubah ini jika dirasa waktu tunda pergantian mode wifi saat disconnect kurang/lebih
+      if(TIMER >= 30){//rubah ini jika dirasa waktu tunda pergantian mode wifi saat disconnect kurang/lebih
         stateWifi = 0;
         EEPROM.write(0,stateWifi);
         EEPROM.commit();
@@ -614,4 +614,17 @@ void buzzer(int state)
 {
  if(state){digitalWrite(BUZZ,HIGH);}
  else{digitalWrite(BUZZ,LOW); }
+}
+
+void autoBright()
+{
+  now = RTC.now();
+  int jam   = now.hour();
+  if(jam <= 6 && jam <= 18){
+    strip.setBrightness(100);
+  }
+
+  if(jam >= 18 && jam <= 6){
+    strip.setBrightness(80);
+  }
 }
